@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+results/*.csv
+results/*.npy
+traffic/*.csv
+traffic/*.npy
+aicb_outputs/*
+!aicb_outputs/.gitkeep
+!results/.gitkeep
+!traffic/.gitkeep
