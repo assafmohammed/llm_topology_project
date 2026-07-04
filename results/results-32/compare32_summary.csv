@@ -1,0 +1,4 @@
+topology,total_gpus,tp,dp,pp,hbi_size,active_pairs,min_active_hop,max_active_hop,weighted_average_hops
+HyperX,32,8,2,2,8,128,1,3,1.0583
+Fat-tree,32,8,2,2,8,128,1,2,1.0291
+Dragonfly+,32,8,2,2,8,128,1,5,1.0922

@@ -1,0 +1,8 @@
+topology,hop,percentage
+HyperX,1,0.5
+HyperX,3,0.5
+Fat-tree,1,0.5
+Fat-tree,2,0.5
+Dragonfly+,1,0.5
+Dragonfly+,4,0.25
+Dragonfly+,5,0.25
