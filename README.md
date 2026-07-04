@@ -37,3 +37,14 @@ Generated comparison outputs:
 - `results/compare32_active_hop_distribution.csv`
 - `results/compare32_active_hop_distribution.png`
 - `results/compare32_weighted_average_hops.png`
+
+Additional latency plots:
+- `compare32_latency_mean_bar.png`
+- `compare32_latency_p50_bar.png`
+- `compare32_latency_p90_bar.png`
+- `compare32_latency_p95_bar.png`
+- `compare32_latency_percentile_bars.png`
+
+`p99` and `p100` may be identical in the 32-GPU case because dominant TP traffic is
+inside HBI for all topologies. Mean/p50/p90 latency are useful debug indicators
+before scaling.
