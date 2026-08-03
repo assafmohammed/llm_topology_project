@@ -11,12 +11,19 @@ from .fat_tree import (
     fat_tree_hop_matrix,
     fat_tree_summary,
 )
-from .hyperx import build_hyperx, hyperx_switch_coord
+from .hyperx import (
+    build_hyperx,
+    hyperx_hop_distance,
+    hyperx_hop_matrix,
+    hyperx_switch_coord,
+)
 
 __all__ = [
     "ParallelismConfig",
     "build_hyperx",
     "hyperx_switch_coord",
+    "hyperx_hop_distance",
+    "hyperx_hop_matrix",
     "build_fat_tree",
     "fat_tree_summary",
     "fat_tree_hop_distance",

@@ -23,6 +23,7 @@ from llm_topology.metrics.link_load import (
     summarize_link_loads,
     summarize_utilization,
 )
+from llm_topology.experiments.pipeline import ExperimentSpec, run_comparison
 from llm_topology.metrics.routing import dragonfly_paths, fat_tree_paths, hyperx_paths
 from llm_topology.topologies.common import ParallelismConfig
 from llm_topology.topologies.dragonfly_plus import build_dragonfly_plus, dragonfly_hop_matrix
@@ -272,6 +273,23 @@ def main() -> None:
     save_combined_utilization_summary(results_dir, results)
     save_combined_latency_percentiles(results_dir, results)
 
+    # Also run the shared pipeline (src/llm_topology/experiments/pipeline.py)
+    # used by run_compare128/run_compare1024/run_paper_sweep, so 32 GPUs gets
+    # the same nested results/compare32/ output tree as the larger configs,
+    # including the beyond-paper routing-flexibility metrics computed there.
+    # The flat results/*.csv files above are untouched for backward compatibility.
+    pipeline_spec = ExperimentSpec(
+        name="compare32",
+        total_gpus=cfg.total_gpus,
+        tp=cfg.tp,
+        dp=cfg.dp,
+        pp=cfg.pp,
+        hbi_size=cfg.hbi_size,
+        traffic_mode="synthetic",
+        output_dir=ROOT / "results" / "compare32",
+    )
+    pipeline_results = run_comparison(pipeline_spec)
+
     plot_grouped_bar(
         {name: result["distribution"] for name, result in results.items()},
         results_dir / "compare32_active_hop_distribution.png",
@@ -389,6 +407,7 @@ def main() -> None:
         link_load_summary = result["link_load_summary"]
         utilization_summary = result["utilization_summary"]
         latency_summary = result["latency_summary"]
+        path_diversity_summary = pipeline_results[name].path_diversity_summary
 
         print(f"{name}:")
         print(f"  Active hop distribution: {result['distribution']}")
@@ -399,6 +418,15 @@ def main() -> None:
         print(f"  p95 latency: {latency_summary['p95_latency_ms']:.4f} ms")
         print(f"  p99 latency: {latency_summary['p99_latency_ms']:.4f} ms")
         print(f"  p100 latency: {latency_summary['p100_latency_ms']:.4f} ms")
+        print(
+            "  Traffic-weighted path diversity: "
+            f"{path_diversity_summary['traffic_weighted_path_diversity']:.4f}"
+        )
+        print(
+            "  Single-path traffic exposure: "
+            f"{path_diversity_summary['single_path_traffic_exposure']:.4f}"
+        )
+        print(f"  Max ECMP path count: {path_diversity_summary['max_path_count']:.0f}")
         print()
 
     print("Interpretation:")
@@ -411,6 +439,18 @@ def main() -> None:
     print("- This is still a 32-GPU debug case; scaling is Phase 2.")
 
     print()
+    print("Beyond-paper routing flexibility:")
+    print("- Traffic-weighted path diversity measures how many ECMP routing choices")
+    print("  are available to the actual workload traffic.")
+    print("- Single-path traffic exposure measures how much traffic is forced onto")
+    print("  only one route.")
+    print("- Higher path diversity and lower single-path exposure indicate more")
+    print("  routing flexibility and potentially better load balancing or fault")
+    print("  tolerance.")
+    print("- These metrics are not replacements for hop, load, or latency; they add")
+    print("  extra explanation for why a topology may scale better.")
+
+    print()
     print("Saved files:")
     for path in sorted(results_dir.glob("compare32_*")):
         print(path)
@@ -419,6 +459,9 @@ def main() -> None:
         print(results_dir / f"{prefix}_link_load.csv")
         print(results_dir / f"{prefix}_link_utilization.csv")
         print(results_dir / f"{prefix}_latency_pairs.csv")
+
+    print()
+    print(f"Also saved the shared-pipeline output tree under: {pipeline_spec.output_dir}")
 
 
 if __name__ == "__main__":

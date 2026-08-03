@@ -4,6 +4,7 @@ from collections import defaultdict
 from itertools import combinations, product
 
 import networkx as nx
+import numpy as np
 
 from .common import (
     ParallelismConfig,
@@ -149,6 +150,46 @@ def build_hyperx(cfg: ParallelismConfig) -> nx.Graph:
             )
 
     return graph
+
+
+def hyperx_hop_distance(src_gpu: int, dst_gpu: int, cfg: ParallelismConfig) -> int:
+    """
+    Formula-based HyperX hop distance, equivalent to the graph shortest
+    path but O(1) instead of running Dijkstra, which matters at 128/1024
+    GPU scale.
+
+    HyperX switches connect directly to every GPU in their own coordinate
+    (unlike Fat-tree's rails, which only serve one local rank each), so
+    there is no HBI-transit shortcut to guard against here: switch-to-switch
+    distance is exactly the number of differing coordinate dimensions
+    (each dimension is a clique, i.e. a Hamming-distance graph), giving
+    gpu -> switch -> ... -> switch -> gpu = 2 + switch_distance.
+    """
+    cfg.validate()
+
+    if src_gpu == dst_gpu:
+        return 0
+
+    src_coord = hyperx_switch_coord(src_gpu, cfg)
+    dst_coord = hyperx_switch_coord(dst_gpu, cfg)
+
+    if src_coord == dst_coord:
+        return 1
+
+    switch_distance = sum(1 for a, b in zip(src_coord, dst_coord) if a != b)
+    return 2 + switch_distance
+
+
+def hyperx_hop_matrix(cfg: ParallelismConfig) -> np.ndarray:
+    cfg.validate()
+
+    matrix = np.zeros((cfg.total_gpus, cfg.total_gpus), dtype=float)
+
+    for src_gpu in gpu_ids(cfg.total_gpus):
+        for dst_gpu in gpu_ids(cfg.total_gpus):
+            matrix[src_gpu, dst_gpu] = hyperx_hop_distance(src_gpu, dst_gpu, cfg)
+
+    return matrix
 
 
 def hyperx_summary(graph: nx.Graph) -> str:
