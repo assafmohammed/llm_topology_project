@@ -48,3 +48,34 @@ Additional latency plots:
 `p99` and `p100` may be identical in the 32-GPU case because dominant TP traffic is
 inside HBI for all topologies. Mean/p50/p90 latency are useful debug indicators
 before scaling.
+
+## Beyond-Paper Metric: Routing Flexibility
+
+In addition to the original paper metrics, this project adds routing-flexibility
+analysis. We compute traffic-weighted ECMP path diversity and single-path traffic
+exposure. These metrics show whether a topology only provides short paths, or also
+provides multiple equal-cost alternatives for load balancing and robustness.
+
+Definitions:
+
+Traffic-weighted ECMP path diversity:
+`sum(S[i,j] * num_paths(i,j)) / sum(S[i,j])`
+
+Single-path traffic exposure:
+`sum(S[i,j] where num_paths(i,j) == 1) / sum(S[i,j])`
+
+Interpretation:
+- Higher traffic-weighted path diversity is better.
+- Lower single-path traffic exposure is better.
+- These metrics help explain link-load and latency behavior, especially at
+  larger scale.
+
+Every comparison experiment folder (`results/compare32/`, `results/compare128_*/`,
+`results/compare1024_*/`, `results/paper_sweep/<config>/`) includes:
+- `routing_flexibility_summary.csv`
+- `routing_flexibility_path_diversity.png`
+- `routing_flexibility_single_path_exposure.png`
+- `routing_flexibility_path_count_cdf.png`
+
+and the two headline metrics (`traffic_weighted_path_diversity`,
+`single_path_traffic_exposure`) are also included in each `summary.csv`.

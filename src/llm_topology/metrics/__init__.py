@@ -20,6 +20,12 @@ from .link_load import (
     summarize_link_loads,
     summarize_utilization,
 )
+from .path_diversity import (
+    PathDiversityPair,
+    compute_path_diversity_pairs,
+    save_path_diversity_pairs,
+    summarize_path_diversity,
+)
 from .routing import dragonfly_paths, fat_tree_paths, hyperx_paths
 
 __all__ = [
@@ -42,4 +48,8 @@ __all__ = [
     "hyperx_paths",
     "fat_tree_paths",
     "dragonfly_paths",
+    "PathDiversityPair",
+    "compute_path_diversity_pairs",
+    "summarize_path_diversity",
+    "save_path_diversity_pairs",
 ]

@@ -148,6 +148,7 @@ def plot_single_bar(
     *,
     title: str,
     ylabel: str,
+    ylim: tuple[float, float] | None = None,
 ) -> Path:
     """
     Plot a single bar chart comparing one scalar value per topology.
@@ -167,6 +168,8 @@ def plot_single_bar(
     ax.set_ylabel(ylabel)
     ax.set_xticks(x)
     ax.set_xticklabels(topologies)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
 
     fig.tight_layout()
@@ -188,3 +191,40 @@ def plot_tail_bar(
     latency.
     """
     return plot_single_bar(values, output_path, title=title, ylabel=ylabel)
+
+
+def plot_path_diversity_bar(
+    values: dict[str, float],
+    output_path: str | Path,
+    *,
+    title: str = "Traffic-Weighted ECMP Path Diversity",
+    ylabel: str = "Weighted average number of ECMP paths",
+) -> Path:
+    """
+    Higher is better: heavier traffic has more equal-cost routing choices.
+    """
+    return plot_single_bar(values, output_path, title=title, ylabel=ylabel)
+
+
+def plot_single_path_exposure_bar(
+    values: dict[str, float],
+    output_path: str | Path,
+    *,
+    title: str = "Single-Path Traffic Exposure",
+    ylabel: str = "Fraction of active traffic with only one path",
+) -> Path:
+    """
+    Lower is better: less traffic forced onto a single, non-redundant route.
+    """
+    return plot_single_bar(values, output_path, title=title, ylabel=ylabel, ylim=(0, 1.05))
+
+
+def plot_path_count_cdf(
+    series: dict[str, np.ndarray | list[float]],
+    output_path: str | Path,
+    *,
+    title: str = "ECMP Path Count CDF",
+    xlabel: str = "Number of equal-cost paths",
+    ylabel: str = "CDF",
+) -> Path:
+    return plot_cdf(series, output_path, title=title, xlabel=xlabel, ylabel=ylabel)
