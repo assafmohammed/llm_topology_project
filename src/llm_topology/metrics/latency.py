@@ -100,4 +100,5 @@ def summarize_latency(
         "p97_latency_ms": float(np.percentile(values, 97)),
         "p99_latency_ms": float(np.percentile(values, 99)),
         "p100_latency_ms": float(np.percentile(values, 100)),
+        "max_latency_ms": float(values.max()),
     }

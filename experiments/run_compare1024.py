@@ -44,6 +44,13 @@ SUMMARY_COLUMNS = [
     "max_path_count",
     "single_path_pair_fraction",
     "single_path_traffic_exposure",
+    "top_1_link_dependency",
+    "top_5_percent_link_dependency",
+    "top_10_percent_link_dependency",
+    "load_imbalance_coefficient",
+    "max_to_mean_load_ratio",
+    "p95_to_mean_load_ratio",
+    "p99_to_mean_load_ratio",
 ]
 
 
@@ -102,6 +109,27 @@ def main() -> None:
                     ],
                     "single_path_traffic_exposure": result.path_diversity_summary[
                         "single_path_traffic_exposure"
+                    ],
+                    "top_1_link_dependency": result.critical_link_dependency_summary[
+                        "top_1_link_dependency"
+                    ],
+                    "top_5_percent_link_dependency": result.critical_link_dependency_summary[
+                        "top_5_percent_link_dependency"
+                    ],
+                    "top_10_percent_link_dependency": result.critical_link_dependency_summary[
+                        "top_10_percent_link_dependency"
+                    ],
+                    "load_imbalance_coefficient": result.load_imbalance_summary[
+                        "load_imbalance_coefficient"
+                    ],
+                    "max_to_mean_load_ratio": result.load_imbalance_summary[
+                        "max_to_mean_load_ratio"
+                    ],
+                    "p95_to_mean_load_ratio": result.load_imbalance_summary[
+                        "p95_to_mean_load_ratio"
+                    ],
+                    "p99_to_mean_load_ratio": result.load_imbalance_summary[
+                        "p99_to_mean_load_ratio"
                     ],
                 }
             )
@@ -174,6 +202,22 @@ def main() -> None:
         ylabel="Max number of ECMP paths",
     )
 
+    plot_grouped_metric_bar(
+        by_config_by_topology("top_5_percent_link_dependency"),
+        results_dir / "compare1024_critical_link_dependency_by_config.png",
+        title="1024-GPU Top-5% Critical-Link Dependency by Config",
+        xlabel="Experiment config",
+        ylabel="Fraction of total routed load",
+    )
+
+    plot_grouped_metric_bar(
+        by_config_by_topology("load_imbalance_coefficient"),
+        results_dir / "compare1024_load_imbalance_by_config.png",
+        title="1024-GPU Load Imbalance Coefficient by Config",
+        xlabel="Experiment config",
+        ylabel="Std / mean link load",
+    )
+
     print()
     print(f"Saved aggregate summary: {summary_path}")
     print("Saved aggregate plots:")
@@ -184,6 +228,8 @@ def main() -> None:
     print(results_dir / "compare1024_path_diversity_by_config.png")
     print(results_dir / "compare1024_single_path_exposure_by_config.png")
     print(results_dir / "compare1024_max_path_count_by_config.png")
+    print(results_dir / "compare1024_critical_link_dependency_by_config.png")
+    print(results_dir / "compare1024_load_imbalance_by_config.png")
 
 
 if __name__ == "__main__":

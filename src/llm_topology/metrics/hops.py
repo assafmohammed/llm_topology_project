@@ -78,3 +78,27 @@ def weighted_average_hops(hop_matrix: np.ndarray, traffic_matrix: np.ndarray) ->
         return 0.0
 
     return float((hop_matrix * traffic_matrix).sum() / total_traffic)
+
+
+def summarize_active_hops(
+    topology: str,
+    hop_matrix: np.ndarray,
+    traffic_matrix: np.ndarray,
+) -> dict[str, float | str]:
+    """
+    Paper Section 5.2: effective hop-count analysis over active pairs only.
+    """
+    values = active_hop_values(hop_matrix, traffic_matrix)
+
+    return {
+        "topology": topology,
+        "active_pairs": int(values.size),
+        "weighted_average_hops": weighted_average_hops(hop_matrix, traffic_matrix),
+        "min_active_hop": float(values.min()),
+        "max_active_hop": float(values.max()),
+        "mean_active_hop_unweighted": float(values.mean()),
+        "p50_active_hop": float(np.percentile(values, 50)),
+        "p90_active_hop": float(np.percentile(values, 90)),
+        "p95_active_hop": float(np.percentile(values, 95)),
+        "p99_active_hop": float(np.percentile(values, 99)),
+    }

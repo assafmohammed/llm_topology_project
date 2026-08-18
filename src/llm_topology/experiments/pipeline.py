@@ -6,7 +6,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ..metrics.hops import active_hop_values, hop_distribution, weighted_average_hops
+from ..metrics.hops import (
+    active_hop_values,
+    hop_distribution,
+    summarize_active_hops,
+    weighted_average_hops,
+)
 from ..metrics.latency import compute_pair_latencies, summarize_latency
 from ..metrics.link_load import (
     add_utilization,
@@ -20,7 +25,9 @@ from ..metrics.path_diversity import (
     save_path_diversity_pairs,
     summarize_path_diversity,
 )
+from ..metrics.robustness import summarize_critical_link_dependency, summarize_load_imbalance
 from ..metrics.routing import dragonfly_paths, fat_tree_paths, hyperx_paths
+from ..metrics.traffic_analysis import analyze_traffic_matrix, traffic_analysis_dataframe
 from ..topologies.common import ParallelismConfig
 from ..topologies.dragonfly_plus import dragonfly_hop_matrix
 from ..topologies.fat_tree import fat_tree_hop_matrix
@@ -38,6 +45,8 @@ from ..viz.cdf import (
     plot_single_path_exposure_bar,
     plot_tail_bar,
 )
+from ..viz.heatmap import plot_hop_heatmap, plot_traffic_heatmap
+from ..viz.routing_robustness import plot_critical_link_dependency_bar, plot_load_imbalance_bar
 
 BANDWIDTH_BYTES_PER_SEC = 50e9
 TRAFFIC_UNIT_BYTES = 1_000_000
@@ -81,10 +90,13 @@ class TopologyResult:
     weighted_avg_hops: float
     min_active_hop: float
     max_active_hop: float
+    hop_summary: dict
     link_load_summary: dict
     utilization_summary: dict
     latency_summary: dict
     path_diversity_summary: dict
+    critical_link_dependency_summary: dict
+    load_imbalance_summary: dict
     paths: dict[str, Path] = field(default_factory=dict)
 
 
@@ -161,10 +173,13 @@ def run_topology_metrics(
     active_values = active_hop_values(hop_matrix, traffic)
     distribution = hop_distribution(active_values)
     weighted_avg = weighted_average_hops(hop_matrix, traffic)
+    hop_summary = summarize_active_hops(topology_name, hop_matrix, traffic)
 
     loads = compute_ecmp_link_loads(traffic, path_provider)
     link_load_df = link_loads_to_dataframe(topology_name, loads)
     link_load_summary = summarize_link_loads(topology_name, loads)
+    critical_link_dependency_summary = summarize_critical_link_dependency(topology_name, loads)
+    load_imbalance_summary = summarize_load_imbalance(topology_name, loads)
 
     if capacity is None:
         capacity = link_load_summary["max_load"] * CAPACITY_HEADROOM
@@ -192,6 +207,12 @@ def run_topology_metrics(
     paths["hop_matrix"] = output_dir / f"{safe_name}_hop_matrix.csv"
     np.savetxt(paths["hop_matrix"], hop_matrix, delimiter=",", fmt="%.0f")
 
+    paths["hop_heatmap"] = plot_hop_heatmap(
+        hop_matrix,
+        output_dir / f"{safe_name}_hop_heatmap.png",
+        title=f"{topology_name} GPU-to-GPU Hop Distance Heatmap",
+    )
+
     paths["traffic_matrix"] = output_dir / f"{safe_name}_traffic_matrix.csv"
     np.savetxt(paths["traffic_matrix"], traffic, delimiter=",", fmt="%.4f")
 
@@ -214,10 +235,13 @@ def run_topology_metrics(
         weighted_avg_hops=weighted_avg,
         min_active_hop=float(active_values.min()),
         max_active_hop=float(active_values.max()),
+        hop_summary=hop_summary,
         link_load_summary=link_load_summary,
         utilization_summary=utilization_summary,
         latency_summary=latency_summary,
         path_diversity_summary=path_diversity_summary,
+        critical_link_dependency_summary=critical_link_dependency_summary,
+        load_imbalance_summary=load_imbalance_summary,
         paths=paths,
     )
 
@@ -235,6 +259,8 @@ def run_comparison(spec: ExperimentSpec) -> dict[str, TopologyResult]:
     cfg = spec.parallelism_config()
     traffic = build_traffic(spec)
 
+    _save_traffic_analysis(spec, cfg, output_dir, traffic)
+
     provisional_max_loads = []
     for name in TOPOLOGIES:
         _, path_provider = _topology_hop_matrix_and_paths(name, cfg)
@@ -251,6 +277,30 @@ def run_comparison(spec: ExperimentSpec) -> dict[str, TopologyResult]:
     _save_combined_outputs(spec, cfg, output_dir, results)
 
     return results
+
+
+def _save_traffic_analysis(
+    spec: ExperimentSpec,
+    cfg: ParallelismConfig,
+    output_dir: Path,
+    traffic: np.ndarray,
+) -> None:
+    """
+    Section 5.1: traffic analysis is topology-independent, so this is saved
+    once per experiment rather than once per topology.
+    """
+    analysis = analyze_traffic_matrix(traffic, cfg)
+    traffic_analysis_dataframe(spec.name, analysis).to_csv(
+        output_dir / "traffic_analysis_summary.csv", index=False
+    )
+
+    np.savetxt(output_dir / "traffic_matrix.csv", traffic, delimiter=",", fmt="%.4f")
+
+    plot_traffic_heatmap(
+        traffic,
+        output_dir / "traffic_heatmap.png",
+        title=f"{spec.name}: GPU-to-GPU Traffic Matrix",
+    )
 
 
 def _save_combined_outputs(
@@ -295,6 +345,21 @@ def _save_combined_outputs(
                 "single_path_pair_fraction": result.path_diversity_summary[
                     "single_path_pair_fraction"
                 ],
+                "top_1_link_dependency": result.critical_link_dependency_summary[
+                    "top_1_link_dependency"
+                ],
+                "top_5_percent_link_dependency": result.critical_link_dependency_summary[
+                    "top_5_percent_link_dependency"
+                ],
+                "top_10_percent_link_dependency": result.critical_link_dependency_summary[
+                    "top_10_percent_link_dependency"
+                ],
+                "load_imbalance_coefficient": result.load_imbalance_summary[
+                    "load_imbalance_coefficient"
+                ],
+                "max_to_mean_load_ratio": result.load_imbalance_summary["max_to_mean_load_ratio"],
+                "p95_to_mean_load_ratio": result.load_imbalance_summary["p95_to_mean_load_ratio"],
+                "p99_to_mean_load_ratio": result.load_imbalance_summary["p99_to_mean_load_ratio"],
             }
         )
     pd.DataFrame(summary_rows).to_csv(output_dir / "summary.csv", index=False)
@@ -305,6 +370,9 @@ def _save_combined_outputs(
             for hop, percentage in sorted(result.hop_distribution.items()):
                 f.write(f"{name},{hop},{percentage}\n")
 
+    pd.DataFrame([r.hop_summary for r in results.values()]).to_csv(
+        output_dir / "hop_summary.csv", index=False
+    )
     pd.DataFrame([r.link_load_summary for r in results.values()]).to_csv(
         output_dir / "link_load_summary.csv", index=False
     )
@@ -333,6 +401,53 @@ def _save_combined_outputs(
     pd.DataFrame(
         [r.path_diversity_summary for r in results.values()], columns=routing_flexibility_columns
     ).to_csv(output_dir / "routing_flexibility_summary.csv", index=False)
+
+    # Section 5.5: combined routing-robustness summary (path diversity +
+    # critical-link dependency + load imbalance) in one row per topology.
+    routing_robustness_columns = [
+        "topology",
+        "traffic_weighted_path_diversity",
+        "single_path_traffic_exposure",
+        "single_path_pair_fraction",
+        "max_path_count",
+        "p95_path_count",
+        "top_1_link_dependency",
+        "top_5_percent_link_dependency",
+        "top_10_percent_link_dependency",
+        "load_imbalance_coefficient",
+        "max_to_mean_load_ratio",
+        "p95_to_mean_load_ratio",
+        "p99_to_mean_load_ratio",
+    ]
+    routing_robustness_rows = [
+        {
+            "topology": name,
+            "traffic_weighted_path_diversity": r.path_diversity_summary[
+                "traffic_weighted_path_diversity"
+            ],
+            "single_path_traffic_exposure": r.path_diversity_summary[
+                "single_path_traffic_exposure"
+            ],
+            "single_path_pair_fraction": r.path_diversity_summary["single_path_pair_fraction"],
+            "max_path_count": r.path_diversity_summary["max_path_count"],
+            "p95_path_count": r.path_diversity_summary["p95_path_count"],
+            "top_1_link_dependency": r.critical_link_dependency_summary["top_1_link_dependency"],
+            "top_5_percent_link_dependency": r.critical_link_dependency_summary[
+                "top_5_percent_link_dependency"
+            ],
+            "top_10_percent_link_dependency": r.critical_link_dependency_summary[
+                "top_10_percent_link_dependency"
+            ],
+            "load_imbalance_coefficient": r.load_imbalance_summary["load_imbalance_coefficient"],
+            "max_to_mean_load_ratio": r.load_imbalance_summary["max_to_mean_load_ratio"],
+            "p95_to_mean_load_ratio": r.load_imbalance_summary["p95_to_mean_load_ratio"],
+            "p99_to_mean_load_ratio": r.load_imbalance_summary["p99_to_mean_load_ratio"],
+        }
+        for name, r in results.items()
+    ]
+    pd.DataFrame(routing_robustness_rows, columns=routing_robustness_columns).to_csv(
+        output_dir / "routing_robustness_summary.csv", index=False
+    )
 
     plot_grouped_bar(
         {name: r.hop_distribution for name, r in results.items()},
@@ -409,29 +524,77 @@ def _save_combined_outputs(
         ylabel="Latency (ms)",
     )
 
+    path_diversity_values = {
+        name: r.path_diversity_summary["traffic_weighted_path_diversity"]
+        for name, r in results.items()
+    }
+    single_path_exposure_values = {
+        name: r.path_diversity_summary["single_path_traffic_exposure"]
+        for name, r in results.items()
+    }
+    path_count_series = {
+        name: pd.read_csv(r.paths["path_diversity_pairs"])["path_count"].to_numpy()
+        for name, r in results.items()
+    }
+
+    # Saved under both the original "routing_flexibility_*" names (kept for
+    # backward compatibility with earlier consumers/tests) and the
+    # "routing_*_bar"/"routing_*_cdf" names from the Section 5.5 checklist.
     plot_path_diversity_bar(
-        {
-            name: r.path_diversity_summary["traffic_weighted_path_diversity"]
-            for name, r in results.items()
-        },
+        path_diversity_values,
         output_dir / "routing_flexibility_path_diversity.png",
+        title=f"{spec.name}: Traffic-Weighted ECMP Path Diversity by Topology",
+    )
+    plot_path_diversity_bar(
+        path_diversity_values,
+        output_dir / "routing_path_diversity_bar.png",
         title=f"{spec.name}: Traffic-Weighted ECMP Path Diversity by Topology",
     )
 
     plot_single_path_exposure_bar(
-        {
-            name: r.path_diversity_summary["single_path_traffic_exposure"]
-            for name, r in results.items()
-        },
+        single_path_exposure_values,
         output_dir / "routing_flexibility_single_path_exposure.png",
+        title=f"{spec.name}: Single-Path Traffic Exposure by Topology",
+    )
+    plot_single_path_exposure_bar(
+        single_path_exposure_values,
+        output_dir / "routing_single_path_exposure_bar.png",
         title=f"{spec.name}: Single-Path Traffic Exposure by Topology",
     )
 
     plot_path_count_cdf(
-        {
-            name: pd.read_csv(r.paths["path_diversity_pairs"])["path_count"].to_numpy()
-            for name, r in results.items()
-        },
+        path_count_series,
         output_dir / "routing_flexibility_path_count_cdf.png",
         title=f"{spec.name}: ECMP Path Count CDF by Topology",
+    )
+    plot_path_count_cdf(
+        path_count_series,
+        output_dir / "routing_path_count_cdf.png",
+        title=f"{spec.name}: ECMP Path Count CDF by Topology",
+    )
+
+    plot_critical_link_dependency_bar(
+        {
+            name: {
+                "top_1": r.critical_link_dependency_summary["top_1_link_dependency"],
+                "top_5_percent": r.critical_link_dependency_summary[
+                    "top_5_percent_link_dependency"
+                ],
+                "top_10_percent": r.critical_link_dependency_summary[
+                    "top_10_percent_link_dependency"
+                ],
+            }
+            for name, r in results.items()
+        },
+        output_dir / "critical_link_dependency_bar.png",
+        title=f"{spec.name}: Critical-Link Dependency by Topology",
+    )
+
+    plot_load_imbalance_bar(
+        {
+            name: r.load_imbalance_summary["load_imbalance_coefficient"]
+            for name, r in results.items()
+        },
+        output_dir / "load_imbalance_bar.png",
+        title=f"{spec.name}: Load Imbalance Coefficient by Topology",
     )

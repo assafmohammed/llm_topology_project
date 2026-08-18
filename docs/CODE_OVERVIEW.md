@@ -37,29 +37,40 @@ Traffic matrix generation and loading.
 ### src/llm_topology/metrics/
 
 Metric calculations, all operating on a hop matrix / traffic matrix / path provider.
+See `docs/METRICS_OVERVIEW.md` for the full definitions.
 
-- **hops.py** — hop matrix via NetworkX shortest paths (used for HyperX's graph),
-  active hop distribution, and traffic-weighted average hops.
+- **traffic_analysis.py** — Section 5.1: classifies active traffic pairs as
+  TP/DP/PP/other and reports traffic-density/volume/percentile stats. Topology
+  independent.
+- **hops.py** — Section 5.2: hop matrix via NetworkX shortest paths (used for
+  HyperX's graph), active hop distribution, traffic-weighted average hops, and
+  `summarize_active_hops` (min/max/mean/percentiles over active pairs).
 - **routing.py** — topology-specific path providers (`hyperx_paths`, `fat_tree_paths`,
   `dragonfly_paths`) that return the valid equal-cost paths between two GPUs.
-- **link_load.py** — routes active traffic over the path providers (ECMP-style, split
-  evenly across equal-cost paths) to get per-link load, plus link-load/utilization
-  summaries.
-- **latency.py** — congestion-aware latency using an M/M/1-style approximation
-  (`1 / (1 - utilization)` per link on the path) and latency percentile summaries.
-- **path_diversity.py** — the beyond-paper routing-flexibility metrics: how many
-  equal-cost paths exist per active pair, traffic-weighted path diversity, and
-  single-path traffic exposure.
+- **link_load.py** — Section 5.3: routes active traffic over the path providers
+  (ECMP-style, split evenly across equal-cost paths) to get per-link load, plus
+  link-load/utilization summaries.
+- **latency.py** — Section 5.4: congestion-aware latency using an M/M/1-style
+  approximation (`1 / (1 - utilization)` per link on the path) and latency
+  percentile summaries.
+- **path_diversity.py** — Section 5.5 (beyond-paper): how many equal-cost paths
+  exist per active pair, traffic-weighted path diversity, and single-path
+  traffic exposure.
+- **robustness.py** — Section 5.5 (beyond-paper): critical-link dependency
+  (how concentrated load is on the busiest links) and the load imbalance
+  coefficient.
 
 ### src/llm_topology/viz/
 
-Plotting helpers. There is no separate `routing_flexibility.py` — those plots live
-in `cdf.py`.
+Plotting helpers.
 
 - **heatmap.py** — GPU x GPU heatmaps for hop matrices and traffic matrices.
 - **cdf.py** — bar charts (hop distribution, single-value comparisons, grouped
-  metric bars) and CDF plots (link load, latency, ECMP path count), including the
-  routing-flexibility bar/CDF plots.
+  metric bars) and CDF plots (link load, latency, ECMP path count). Also holds the
+  original path-diversity/single-path-exposure plot implementations.
+- **routing_robustness.py** — the Section 5.5 plotting helpers: re-exports the
+  path-diversity/single-path-exposure/path-count-CDF functions from `cdf.py`, and
+  adds `plot_critical_link_dependency_bar`/`plot_load_imbalance_bar`.
 
 ### src/llm_topology/experiments/
 
@@ -168,17 +179,21 @@ pytest -q
 
 ## 6. Main Outputs
 
-- `summary.csv`
+- `traffic_analysis_summary.csv`, `traffic_matrix.csv`, `traffic_heatmap.png`
+- `summary.csv`, `hop_summary.csv`
 - `active_hop_distribution.csv`
 - `link_load_summary.csv`
 - `link_utilization_summary.csv`
 - `latency_percentiles.csv`
-- `routing_flexibility_summary.csv`
-- hop heatmaps
+- `routing_flexibility_summary.csv`, `routing_robustness_summary.csv`
+- hop heatmaps (per topology)
 - link-load CDF
 - latency CDF
 - latency percentile plots
-- routing-flexibility bar/CDF plots
+- routing-flexibility/robustness bar/CDF plots (path diversity, single-path
+  exposure, path-count CDF, critical-link dependency, load imbalance)
+
+See `docs/METRICS_OVERVIEW.md` for what each metric means.
 
 ## 7. What to Read First
 
@@ -191,3 +206,4 @@ pytest -q
 7. `src/llm_topology/metrics/link_load.py`
 8. `src/llm_topology/metrics/latency.py`
 9. `src/llm_topology/metrics/path_diversity.py`
+10. `src/llm_topology/metrics/robustness.py`

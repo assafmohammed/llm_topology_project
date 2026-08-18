@@ -22,11 +22,16 @@ METRIC_COLUMNS = [
     "p100_latency_ms",
     "traffic_weighted_path_diversity",
     "single_path_traffic_exposure",
+    "top_1_link_dependency",
+    "top_5_percent_link_dependency",
+    "top_10_percent_link_dependency",
+    "load_imbalance_coefficient",
 ]
 
 # Lower is better for every metric here (hops, load, utilization, latency,
-# single-path exposure). traffic_weighted_path_diversity is higher-is-better,
-# so it is intentionally excluded from this idxmin()-based comparison.
+# single-path exposure, critical-link dependency, load imbalance).
+# traffic_weighted_path_diversity is higher-is-better, so it is
+# intentionally excluded from this idxmin()-based comparison.
 BEST_METRICS = [
     "weighted_avg_hops",
     "max_link_load",
@@ -36,6 +41,8 @@ BEST_METRICS = [
     "mean_latency_ms",
     "p99_latency_ms",
     "single_path_traffic_exposure",
+    "top_5_percent_link_dependency",
+    "load_imbalance_coefficient",
 ]
 
 
@@ -107,8 +114,9 @@ def build_alignment_notes(topology_summary: pd.DataFrame) -> str:
 - Link utilization
 - Congestion-aware latency (M/M/1-style approximation) and latency CDF
 - Latency percentiles (p50/p90/p95/p97/p99/p100)
-- Beyond-paper routing-flexibility analysis: traffic-weighted ECMP path
-  diversity and single-path traffic exposure
+- Beyond-paper routing-robustness analysis (Section 5.5): traffic-weighted
+  ECMP path diversity, single-path traffic exposure, critical-link
+  dependency, and load imbalance coefficient
 
 ## 2. What matches the paper
 
