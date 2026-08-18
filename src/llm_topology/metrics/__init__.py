@@ -2,6 +2,7 @@ from .hops import (
     active_hop_values,
     hop_distribution,
     shortest_path_hop_matrix,
+    summarize_active_hops,
     weighted_average_hops,
 )
 from .latency import (
@@ -26,12 +27,15 @@ from .path_diversity import (
     save_path_diversity_pairs,
     summarize_path_diversity,
 )
+from .robustness import summarize_critical_link_dependency, summarize_load_imbalance
 from .routing import dragonfly_paths, fat_tree_paths, hyperx_paths
+from .traffic_analysis import analyze_traffic_matrix, traffic_analysis_dataframe
 
 __all__ = [
     "active_hop_values",
     "hop_distribution",
     "shortest_path_hop_matrix",
+    "summarize_active_hops",
     "weighted_average_hops",
     "canonical_edge",
     "path_edges",
@@ -52,4 +56,8 @@ __all__ = [
     "compute_path_diversity_pairs",
     "summarize_path_diversity",
     "save_path_diversity_pairs",
+    "summarize_critical_link_dependency",
+    "summarize_load_imbalance",
+    "analyze_traffic_matrix",
+    "traffic_analysis_dataframe",
 ]

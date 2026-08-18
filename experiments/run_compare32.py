@@ -408,25 +408,36 @@ def main() -> None:
         utilization_summary = result["utilization_summary"]
         latency_summary = result["latency_summary"]
         path_diversity_summary = pipeline_results[name].path_diversity_summary
+        critical_link_dependency_summary = pipeline_results[name].critical_link_dependency_summary
+        load_imbalance_summary = pipeline_results[name].load_imbalance_summary
 
         print(f"{name}:")
-        print(f"  Active hop distribution: {result['distribution']}")
-        print(f"  Weighted avg hops: {result['weighted_avg']:.4f}")
-        print(f"  Max link load: {link_load_summary['max_load']:.4f}")
-        print(f"  p95 link load: {link_load_summary['p95_load']:.4f}")
-        print(f"  Max utilization: {utilization_summary['max_utilization']:.4f}")
-        print(f"  p95 latency: {latency_summary['p95_latency_ms']:.4f} ms")
-        print(f"  p99 latency: {latency_summary['p99_latency_ms']:.4f} ms")
-        print(f"  p100 latency: {latency_summary['p100_latency_ms']:.4f} ms")
+        print("  Paper metrics:")
+        print(f"    Active hop distribution: {result['distribution']}")
+        print(f"    Weighted avg hops: {result['weighted_avg']:.4f}")
+        print(f"    Max link load: {link_load_summary['max_load']:.4f}")
+        print(f"    p95 link load: {link_load_summary['p95_load']:.4f}")
+        print(f"    Max utilization: {utilization_summary['max_utilization']:.4f}")
+        print(f"    p95 latency: {latency_summary['p95_latency_ms']:.4f} ms")
+        print(f"    p99 latency: {latency_summary['p99_latency_ms']:.4f} ms")
+        print(f"    p100 latency: {latency_summary['p100_latency_ms']:.4f} ms")
+        print("  New routing robustness metrics:")
         print(
-            "  Traffic-weighted path diversity: "
+            "    Traffic-weighted path diversity: "
             f"{path_diversity_summary['traffic_weighted_path_diversity']:.4f}"
         )
         print(
-            "  Single-path traffic exposure: "
+            "    Single-path traffic exposure: "
             f"{path_diversity_summary['single_path_traffic_exposure']:.4f}"
         )
-        print(f"  Max ECMP path count: {path_diversity_summary['max_path_count']:.0f}")
+        print(
+            "    Top 5% critical-link dependency: "
+            f"{critical_link_dependency_summary['top_5_percent_link_dependency']:.4f}"
+        )
+        print(
+            "    Load imbalance coefficient: "
+            f"{load_imbalance_summary['load_imbalance_coefficient']:.4f}"
+        )
         print()
 
     print("Interpretation:")
@@ -439,16 +450,15 @@ def main() -> None:
     print("- This is still a 32-GPU debug case; scaling is Phase 2.")
 
     print()
-    print("Beyond-paper routing flexibility:")
-    print("- Traffic-weighted path diversity measures how many ECMP routing choices")
-    print("  are available to the actual workload traffic.")
-    print("- Single-path traffic exposure measures how much traffic is forced onto")
-    print("  only one route.")
-    print("- Higher path diversity and lower single-path exposure indicate more")
-    print("  routing flexibility and potentially better load balancing or fault")
-    print("  tolerance.")
-    print("- These metrics are not replacements for hop, load, or latency; they add")
-    print("  extra explanation for why a topology may scale better.")
+    print("Beyond-paper routing robustness (Section 5.5):")
+    print("- The paper metrics evaluate hop count, ECMP load distribution, and")
+    print("  congestion-aware latency.")
+    print("- The new routing-robustness metrics add an explanation of routing")
+    print("  flexibility, traffic concentration, and dependence on critical links.")
+    print("- Higher path diversity and lower single-path exposure suggest better")
+    print("  routing flexibility.")
+    print("- Lower critical-link dependency and lower load imbalance suggest better")
+    print("  robustness and load spreading.")
 
     print()
     print("Saved files:")

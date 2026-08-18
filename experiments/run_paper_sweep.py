@@ -39,6 +39,13 @@ SUMMARY_COLUMNS = [
     "max_path_count",
     "single_path_pair_fraction",
     "single_path_traffic_exposure",
+    "top_1_link_dependency",
+    "top_5_percent_link_dependency",
+    "top_10_percent_link_dependency",
+    "load_imbalance_coefficient",
+    "max_to_mean_load_ratio",
+    "p95_to_mean_load_ratio",
+    "p99_to_mean_load_ratio",
 ]
 
 
@@ -168,6 +175,27 @@ def run_sweep(
                     "single_path_traffic_exposure": result.path_diversity_summary[
                         "single_path_traffic_exposure"
                     ],
+                    "top_1_link_dependency": result.critical_link_dependency_summary[
+                        "top_1_link_dependency"
+                    ],
+                    "top_5_percent_link_dependency": result.critical_link_dependency_summary[
+                        "top_5_percent_link_dependency"
+                    ],
+                    "top_10_percent_link_dependency": result.critical_link_dependency_summary[
+                        "top_10_percent_link_dependency"
+                    ],
+                    "load_imbalance_coefficient": result.load_imbalance_summary[
+                        "load_imbalance_coefficient"
+                    ],
+                    "max_to_mean_load_ratio": result.load_imbalance_summary[
+                        "max_to_mean_load_ratio"
+                    ],
+                    "p95_to_mean_load_ratio": result.load_imbalance_summary[
+                        "p95_to_mean_load_ratio"
+                    ],
+                    "p99_to_mean_load_ratio": result.load_imbalance_summary[
+                        "p99_to_mean_load_ratio"
+                    ],
                 }
             )
 
@@ -233,6 +261,22 @@ def run_sweep(
         ylabel="Fraction of active traffic with only one path",
     )
 
+    plot_grouped_metric_bar(
+        by_experiment_by_topology("top_5_percent_link_dependency"),
+        results_dir / "paper_sweep_critical_link_dependency.png",
+        title="Paper Sweep: Top-5% Critical-Link Dependency by Config",
+        xlabel="Experiment config",
+        ylabel="Fraction of total routed load",
+    )
+
+    plot_grouped_metric_bar(
+        by_experiment_by_topology("load_imbalance_coefficient"),
+        results_dir / "paper_sweep_load_imbalance.png",
+        title="Paper Sweep: Load Imbalance Coefficient by Config",
+        xlabel="Experiment config",
+        ylabel="Std / mean link load",
+    )
+
     print()
     print(f"Saved aggregate summary: {summary_path}")
     print("Saved aggregate plots:")
@@ -242,6 +286,8 @@ def run_sweep(
     print(results_dir / "paper_sweep_p95_link_load.png")
     print(results_dir / "paper_sweep_path_diversity.png")
     print(results_dir / "paper_sweep_single_path_exposure.png")
+    print(results_dir / "paper_sweep_critical_link_dependency.png")
+    print(results_dir / "paper_sweep_load_imbalance.png")
 
 
 def main() -> None:

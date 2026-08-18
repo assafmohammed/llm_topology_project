@@ -75,8 +75,10 @@ def summarize_link_loads(
     return {
         "topology": topology,
         "link_count": int(values.size),
+        "total_routed_load": float(values.sum()),
         "min_load": float(values.min()),
         "mean_load": float(values.mean()),
+        "std_load": float(values.std()),
         "p50_load": float(np.percentile(values, 50)),
         "p90_load": float(np.percentile(values, 90)),
         "p95_load": float(np.percentile(values, 95)),
